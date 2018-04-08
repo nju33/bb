@@ -1,0 +1,10 @@
+[package]
+name = "bb"
+version = "0.1.0"
+authors = ["nju33 <nju33.ki@gmail.com>"]
+
+[dependencies]
+clap = "2.31.2" 
+toml = "0.4.6"
+serde = "1.0.37" 
+serde_derive = "1.0.37"
