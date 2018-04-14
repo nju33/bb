@@ -15,7 +15,8 @@ impl Bookmark {
     }
   }
 
-  pub fn command(&self) -> String {
-    format!("{}", &self.path.to_str().unwrap())
+  pub fn command(&self, head: PathBuf) -> String {
+    let path = &head.join(self.path.to_str().unwrap());
+    format!("{}", path.to_str().unwrap())
   }
 }

@@ -30,7 +30,8 @@ fn run_app() -> Result<(), ConfigErr> {
 
     match target_bookmark {
         Some(b) => {
-            println!("{}", b.command());
+            let dir_name = config.dir_name.take();
+            println!("{}", b.command(dir_name));
             Ok(())
         },
         None => Err(ConfigErr::Io(Error::new(ErrorKind::NotFound, "not found"))),

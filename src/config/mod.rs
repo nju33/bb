@@ -6,19 +6,21 @@ use std::error;
 use std::env;
 use std::path::{Path, PathBuf};
 use std::fs::File;
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::io::{Read, Error, ErrorKind};
 use std::collections::{BTreeMap};
 use bookmark::Bookmark;
 
 pub struct Config {
-  pub bookmarks: RefCell<Vec<Bookmark>>
+  pub dir_name: Cell<PathBuf>,
+  pub bookmarks: RefCell<Vec<Bookmark>>,
 }
 
 impl Config {
   pub fn new() -> Config {
     Config {
-      bookmarks: RefCell::new(Vec::new())
+      dir_name: Cell::new(PathBuf::new()),
+      bookmarks: RefCell::new(Vec::new()),
     }
   }
 
@@ -61,6 +63,7 @@ impl Config {
       Bookmark::new(cell.0.as_str(), cell.1.as_str().unwrap())
     }).collect::<Vec<Bookmark>>();
 
+    self.dir_name.replace(bookmark_toml.parent().unwrap().to_path_buf());
     self.bookmarks.replace(bookmarks);
 
     Ok(())

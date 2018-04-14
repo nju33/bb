@@ -1,5 +1,5 @@
 function bb 
-  set -l result (./target/release/bb $argv)
+  set -l result (/Users/nju33/.cargo/bin/bb $argv)
 
   if [ $status = 0 ]
     cd $result
@@ -7,3 +7,4 @@ function bb
     echo err
   end
 end
+
