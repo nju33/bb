@@ -3,6 +3,7 @@ function bb () {
   status=$?
 
   if [ $status = 0 ]; then
+    echo $result
     cd $result
   else
     echo err

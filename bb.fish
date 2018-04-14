@@ -7,5 +7,3 @@ function bb
     echo err
   end
 end
-
-bb $argv

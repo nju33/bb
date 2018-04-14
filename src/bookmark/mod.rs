@@ -16,6 +16,6 @@ impl Bookmark {
   }
 
   pub fn command(&self) -> String {
-    format!("{:?}", self.path)
+    format!("{}", &self.path.to_str().unwrap())
   }
 }
