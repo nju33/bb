@@ -1,82 +1,111 @@
 extern crate toml;
 
+use self::toml::{Value, de};
+use std::fmt;
+use std::error;
 use std::env;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::fs::File;
-use std::io::{Read, Error};
-// use std::iter::IntoIterator::into_iter;
+use std::cell::RefCell;
+use std::io::{Read, Error, ErrorKind};
 use std::collections::{BTreeMap};
-use self::toml::Value;
 use bookmark::Bookmark;
 
-#[derive(Deserialize, Debug)]
 pub struct Config {
-  aliases: BTreeMap<String, Value>
-}
-
-pub fn hello_mod() {
-  println!("{}", "from mod");
+  pub bookmarks: RefCell<Vec<Bookmark>>
 }
 
 impl Config {
-  fn find_bookmark_toml() -> Option<String> {
-    let mut current_dir = env::current_dir().unwrap();
-    let mut current_dir = Some(Path::new(current_dir.to_str().unwrap()));
-    let mut filename: Option<String> = None;
-
-     while let Some(dirname) = current_dir {
-      filename = Path::new(&dirname).with_file_name("bookmark.toml").to_str().map(|str| str.to_string());
-      if Path::new(&filename.unwrap()).exists() {
-        filename = filename;
-        break;
-      }
-
-      current_dir = Path::new(&dirname).parent();
-     }
-
-     filename.and_then(|name| name.into())
+  pub fn new() -> Config {
+    Config {
+      bookmarks: RefCell::new(Vec::new())
+    }
   }
 
-  pub fn get() -> Result<String, Error> {
-    let current_dir = env::current_dir().unwrap();;
-    println!("{:?}", current_dir);
-    let filename = Path::new(&current_dir).with_file_name("a.toml");
-    let mut file = File::open(&filename)?;
+  fn get_file_name<T: AsRef<Path>>(&self, dir_name: T) -> PathBuf {
+    dir_name.as_ref().join("bookmark.toml")
+  }
+
+  fn find_bookmark_toml(&self) -> Result<PathBuf, ConfigErr> {
+    let mut current_dir_name = Path::new("/Users/nju33/github/bb/example/b").to_path_buf();
+    let mut dir_name = current_dir_name.clone();
+    let mut file_name = self.get_file_name(&dir_name);  
+
+    while !file_name.exists() {
+      try!(match dir_name.clone().parent() {
+        Some(parent_dir_name) => {
+          current_dir_name = parent_dir_name.to_path_buf();
+          dir_name = current_dir_name;
+          file_name = self.get_file_name(&parent_dir_name);
+          Ok("ok")
+        },
+        None => {
+          Err(ConfigErr::Io(Error::new(ErrorKind::NotFound, "bookmark.toml not found")))
+        },
+      });
+    }
+
+    Ok(file_name)
+  }
+
+  pub fn get(&self) -> ::std::result::Result<(), ConfigErr> {
+    let bookmark_toml: PathBuf = try!(self.find_bookmark_toml());
+    let mut file = try!(File::open(&bookmark_toml).map_err(ConfigErr::Io));
     let mut contents = String::new();
+    file.read_to_string(&mut contents);
+  
+    let toml = try!(contents.parse::<Value>());
+    let bookmark_table = toml.as_table().unwrap();
 
-    file.read_to_string(&mut contents)?;
+    let bookmarks = bookmark_table.into_iter().map(|cell| {
+      Bookmark::new(cell.0.as_str(), cell.1.as_str().unwrap())
+    }).collect::<Vec<Bookmark>>();
 
-    // let parsed = contents.parse::<Value>().unwrap();
-    // let a = &parsed["aliases"];
-    // let a: Vec<(String, String)> = parsed.try_into().unwrap();
-    // println!("{:?}", a);
-    // for (movie, review) in &parsed.iter() {
-      // println!("{}: \"{}\"", movie, review);
-    // }
+    self.bookmarks.replace(bookmarks);
 
-    let config: Config = toml::from_str(&contents).unwrap();
-    // println!("{:?}", aliases);
+    Ok(())
+  }
+}
 
+#[derive(Debug)]
+pub enum ConfigErr {
+  Io(::std::io::Error),
+  Toml(de::Error),
+}
 
+impl fmt::Display for ConfigErr {
+  fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    match *self {
+      ConfigErr::Io(ref err) => write!(f, "IO Error: {}", err),
+      ConfigErr::Toml(ref err) => write!(f, "Toml Error: {}", err),
+    }
+  }
+}
 
-    // a.into_iter().map(|b| println!("{:?}", b));
-    // for (name, path) in &config.aliases {
-    //   println!("{}/{}", name, path);
-    // }
+impl error::Error for ConfigErr {
+  fn description(&self) -> &str {
+    match *self {
+      ConfigErr::Io(ref err) => err.description(),
+      ConfigErr::Toml(ref err) => err.description(),
+    }
+  }
 
-    let a: Vec<_> = config.aliases.into_iter().map(|a| {
-      match a {
-        (n, p) => Bookmark::new(n, p.to_string()),
-        _ => panic!(),
-      }
-      // println!("{:?}", a);
-      // a
-    }).collect();
-    println!("{:?}", a);
+  fn cause(&self) -> Option<&error::Error> {
+    match *self {
+      ConfigErr::Io(ref err) => Some(err),
+      ConfigErr::Toml(ref err) => Some(err),
+    }
+  }
+}
 
-    // parsed.iter().map(|a| println!("{:?}", a));
-    // println!("{:?}", parsed["hoge"]);
+impl From<::std::io::Error> for ConfigErr {
+  fn from(err: ::std::io::Error) -> ConfigErr {
+    ConfigErr::Io(err)
+  }
+}
 
-    Ok("aiueo".to_string())
+impl From<de::Error> for ConfigErr {
+  fn from(err: de::Error) -> ConfigErr {
+    ConfigErr::Toml(err)
   }
 }
